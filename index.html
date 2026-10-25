@@ -1,0 +1,700 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}img{max-width:100%}</style>
+<title>402 Настройки</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&family=Unbounded:wght@500;700&display=swap">
+<style>
+/* Ночной драг-стрип: асфальт с синевой, янтарь стартового «дерева», зелёный — «быстрее автонастройки».
+   Одна колонка, нижние вкладки, главный элемент — табло времени на экране машины. */
+:root {
+  --bg: #0c1524;          /* ночной асфальт */
+  --surface: #142036;     /* панель */
+  --raise: #1b2a45;       /* поле ввода, нажатая строка */
+  --line: #253756;
+  --fg: #e9eef6;
+  --muted: #8b9bb5;
+  --amber: #ffb23e;       /* янтарь «дерева» — акцент */
+  --amber-ink: #241500;
+  --go: #3ddc84;          /* быстрее */
+  --stop: #ff6a5e;        /* ошибка */
+  --display: "Unbounded", "Arial Black", system-ui, sans-serif;
+  --body: "Golos Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --r-panel: 14px;
+  --r-control: 10px;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #eef2f7; --surface: #ffffff; --raise: #e4eaf2; --line: #d3dce8;
+    --fg: #0f1a2b; --muted: #5a6a83; --amber: #b86b00; --amber-ink: #ffffff;
+    --go: #11824a; --stop: #c4352b; color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #eef2f7; --surface: #ffffff; --raise: #e4eaf2; --line: #d3dce8;
+  --fg: #0f1a2b; --muted: #5a6a83; --amber: #b86b00; --amber-ink: #ffffff;
+  --go: #11824a; --stop: #c4352b; color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--fg);
+  font: 15px/1.45 var(--body);
+  -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+.app {
+  max-width: 560px; margin: 0 auto; min-height: 100%;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 8px calc(84px + env(safe-area-inset-bottom, 0px));
+}
+
+/* ---------- верх */
+.top { display: flex; align-items: center; gap: 10px; min-height: 48px; }
+.back {
+  width: 36px; height: 36px; border-radius: 50%; border: 0; background: var(--raise);
+  display: grid; place-items: center; flex: none;
+}
+.back svg { width: 18px; height: 18px; }
+.top h1 { font: 600 17px/1.2 var(--body); margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.demo {
+  margin-left: auto; flex: none; font-size: 12px; color: var(--muted);
+  border: 1px solid var(--line); border-radius: 99px; padding: 3px 9px;
+}
+
+/* ---------- поиск и список машин */
+.search { position: relative; margin: 6px 0 18px; }
+.search input {
+  width: 100%; height: 48px; border-radius: var(--r-control);
+  border: 1px solid var(--line); background: var(--surface);
+  padding: 0 14px 0 42px; font-size: 16px;
+}
+.search svg { position: absolute; left: 14px; top: 15px; width: 18px; height: 18px; color: var(--muted); }
+.section-title { font: 600 13px/1 var(--body); color: var(--muted); margin: 22px 0 10px; }
+
+.garage { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.garage::-webkit-scrollbar { display: none; }
+.chip {
+  flex: none; border: 1px solid var(--line); background: var(--surface); border-radius: 99px;
+  padding: 7px 12px; font-size: 14px; display: flex; gap: 7px; align-items: center;
+}
+
+.cars { display: grid; gap: 1px; background: var(--line); border-radius: var(--r-panel); overflow: hidden; border: 1px solid var(--line); }
+.car-row {
+  display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center;
+  padding: 14px; background: var(--surface); border: 0; text-align: left; width: 100%;
+}
+.car-row:active { background: var(--raise); }
+.car-row .name { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.car-row .sub { color: var(--muted); font-size: 13px; }
+.car-row .best { text-align: right; }
+.car-row .best b { font: 500 15px/1.2 var(--display); }
+.car-row .best span { display: block; color: var(--muted); font-size: 12px; }
+
+/* плашка класса — как в гараже игры */
+.cls {
+  display: inline-grid; place-items: center; min-width: 30px; height: 30px; padding: 0 6px;
+  border-radius: 7px; font: 700 14px/1 var(--display); color: #fff;
+}
+.cls.L { background: #e2553f; } .cls.A { background: #5b86c9; } .cls.B { background: #4aa36b; }
+.cls.C { background: #8e6ccf; } .cls.D { background: #6b7a90; }
+
+.empty { color: var(--muted); padding: 24px 4px; }
+
+/* ---------- экран машины */
+.car-head { display: flex; gap: 12px; align-items: center; margin: 4px 0 16px; }
+.car-head .cls { min-width: 40px; height: 40px; font-size: 18px; border-radius: 9px; }
+.car-head h2 { font: 700 20px/1.15 var(--display); margin: 0; overflow-wrap: anywhere; }
+.car-head p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+.fav { margin-left: auto; flex: none; border: 1px solid var(--line); background: var(--surface); border-radius: 99px; padding: 7px 12px; font-size: 13px; }
+.fav[aria-pressed="true"] { border-color: var(--amber); color: var(--amber); }
+
+.modes { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-control); padding: 3px; gap: 3px; }
+.modes button { border: 0; background: none; border-radius: 7px; padding: 8px 2px; font-size: 13px; color: var(--muted); }
+.modes button[aria-selected="true"] { background: var(--raise); color: var(--fg); font-weight: 600; }
+
+/* табло — главный элемент */
+.board { padding: 26px 0 22px; border-bottom: 1px solid var(--line); }
+.board .label { color: var(--muted); font-size: 13px; }
+.board .time { font: 700 clamp(52px, 17vw, 76px)/1 var(--display); letter-spacing: -0.02em; margin: 8px 0 10px; }
+.board .time small { font-size: 0.32em; font-weight: 500; color: var(--muted); margin-left: 6px; letter-spacing: 0; }
+.board .delta { color: var(--go); font-weight: 600; }
+.board .delta.none { color: var(--muted); font-weight: 400; }
+.lights { display: flex; gap: 6px; margin-bottom: 14px; }
+.lights i { width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
+.lights i.on { background: var(--amber); box-shadow: 0 0 10px var(--amber); }
+.lights i.go { background: var(--go); box-shadow: 0 0 10px var(--go); }
+@media (prefers-reduced-motion: no-preference) {
+  .lights.run i { animation: stage 0.9s steps(1) both; }
+  .lights.run i:nth-child(2) { animation-delay: .15s } .lights.run i:nth-child(3) { animation-delay: .3s }
+  .lights.run i:nth-child(4) { animation-delay: .45s }
+  @keyframes stage { from { background: var(--line); box-shadow: none; } }
+}
+
+.tunes { list-style: none; margin: 0; padding: 0; }
+.tune-row {
+  display: grid; grid-template-columns: 28px 1fr auto; gap: 4px 12px; align-items: baseline;
+  padding: 16px 0; border-bottom: 1px solid var(--line); width: 100%; background: none; border-left: 0; border-right: 0; border-top: 0; text-align: left;
+}
+.tune-row .rank { font: 700 15px/1 var(--display); color: var(--muted); }
+.tune-row:first-child .rank { color: var(--amber); }
+.tune-row .t { font: 500 18px/1.2 var(--display); }
+.tune-row .t em { font-style: normal; color: var(--go); font: 600 13px var(--body); margin-left: 8px; }
+.tune-row .meta { grid-column: 2 / 4; color: var(--muted); font-size: 13px; }
+.tune-row .who { color: var(--muted); font-size: 13px; text-align: right; }
+.tune-row .lock { color: var(--amber); font-size: 13px; }
+.note { color: var(--muted); font-size: 13px; margin: 14px 0 0; }
+
+/* ---------- таймслип настройки */
+.slip { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-panel); padding: 18px 16px; }
+.slip-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-end; padding-bottom: 14px; border-bottom: 1px dashed var(--line); }
+.slip-head .time { font: 700 34px/1 var(--display); }
+.slip-head .stats { color: var(--muted); font-size: 13px; text-align: right; }
+.slip-runs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 14px 0; border-bottom: 1px dashed var(--line); }
+.slip-runs div { font-size: 12px; color: var(--muted); }
+.slip-runs b { display: block; color: var(--fg); font: 500 15px/1.3 var(--display); }
+.block { padding: 16px 0 4px; }
+.block + .block { border-top: 1px dashed var(--line); }
+.block h3 { font: 600 14px/1 var(--body); margin: 0 0 12px; }
+.kv { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; margin: 0; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; font-weight: 600; text-align: right; }
+
+.ladder { display: grid; gap: 7px; margin: 0 0 12px; }
+.gear { display: grid; grid-template-columns: 18px 1fr 52px; gap: 10px; align-items: center; font-size: 14px; }
+.gear span:first-child { color: var(--muted); }
+.gear .bar { height: 10px; border-radius: 3px; background: var(--raise); overflow: hidden; }
+.gear .bar i { display: block; height: 100%; background: var(--amber); border-radius: 3px; }
+.gear b { text-align: right; font-weight: 600; }
+
+.locked .val { filter: blur(6px); user-select: none; }
+.paywall {
+  margin-top: 16px; padding: 16px; border-radius: var(--r-panel);
+  border: 1px solid var(--amber); display: grid; gap: 10px;
+}
+.paywall p { margin: 0; }
+.paywall .sub { color: var(--muted); font-size: 13px; }
+
+/* ---------- кнопки и формы */
+.btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;
+  min-height: 50px; border-radius: var(--r-control); border: 0;
+  background: var(--amber); color: var(--amber-ink); font-weight: 600; font-size: 16px;
+}
+.btn.ghost { background: var(--raise); color: var(--fg); }
+.btn:active { transform: scale(0.99); }
+
+form { display: grid; gap: 14px; }
+fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 12px; min-width: 0; }
+legend { font: 600 15px/1.2 var(--body); padding: 0; margin-bottom: 2px; }
+.field { display: grid; gap: 6px; min-width: 0; }
+.field label { font-size: 13px; color: var(--muted); }
+.field input, .field select {
+  height: 46px; border-radius: var(--r-control); border: 1px solid var(--line);
+  background: var(--surface); padding: 0 12px; font-size: 16px; width: 100%; min-width: 0;
+}
+.field input[aria-invalid="true"] { border-color: var(--stop); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.ratios { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 10px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-panel); padding: 16px; display: grid; gap: 12px; }
+details.panel summary { cursor: pointer; font-weight: 600; list-style: none; display: flex; justify-content: space-between; }
+details.panel summary::-webkit-details-marker { display: none; }
+details.panel summary::after { content: "+"; color: var(--muted); font-size: 20px; line-height: 1; }
+details[open].panel summary::after { content: "−"; }
+details.panel > div { display: grid; gap: 12px; margin-top: 4px; }
+.hint { color: var(--muted); font-size: 13px; margin: 0; }
+.err { color: var(--stop); font-size: 13px; margin: 0; }
+.upload {
+  display: grid; place-items: center; gap: 4px; min-height: 96px; text-align: center;
+  border: 1.5px dashed var(--line); border-radius: var(--r-panel); color: var(--muted); padding: 14px;
+}
+.upload b { color: var(--fg); }
+.upload input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.upload:focus-within { border-color: var(--amber); }
+.seg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.seg label { position: relative; }
+.seg input { position: absolute; opacity: 0; }
+.seg span { display: block; text-align: center; padding: 10px 2px; border-radius: var(--r-control); border: 1px solid var(--line); background: var(--surface); font-size: 13px; }
+.seg input:checked + span { border-color: var(--amber); color: var(--amber); font-weight: 600; }
+.seg input:focus-visible + span { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+.done { text-align: center; padding: 40px 8px; display: grid; gap: 14px; justify-items: center; }
+.done h2 { font: 700 22px/1.2 var(--display); margin: 0; }
+.done p { margin: 0; color: var(--muted); max-width: 34ch; }
+
+/* ---------- профиль */
+.me { display: grid; gap: 4px; margin: 6px 0 18px; }
+.me h2 { font: 700 22px/1.2 var(--display); margin: 0; }
+.me p { margin: 0; color: var(--muted); }
+.subs { display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r-panel); overflow: hidden; }
+.sub-row { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 12px 14px; background: var(--surface); }
+.sub-row .s { font-size: 13px; color: var(--muted); }
+.pill { font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 99px; align-self: center; grid-row: 1 / 3; grid-column: 2; }
+.pill.ok { color: var(--go); background: color-mix(in srgb, var(--go) 14%, transparent); }
+.pill.wait { color: var(--amber); background: color-mix(in srgb, var(--amber) 14%, transparent); }
+.pill.no { color: var(--stop); background: color-mix(in srgb, var(--stop) 14%, transparent); }
+
+/* ---------- нижние вкладки */
+.tabs {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid var(--line);
+  padding: 6px max(16px, env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+}
+.tabs div { max-width: 560px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); }
+.tabs button { border: 0; background: none; display: grid; justify-items: center; gap: 3px; padding: 6px 0; font-size: 12px; color: var(--muted); }
+.tabs button svg { width: 22px; height: 22px; }
+.tabs button[aria-current="page"] { color: var(--amber); }
+
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(80px + env(safe-area-inset-bottom, 0px)); z-index: 6;
+  background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 99px; font-size: 14px;
+  max-width: calc(100% - 32px);
+}
+</style>
+
+</head>
+<body>
+<div class="app">
+  <div class="top" id="top"></div>
+  <main id="view" aria-live="polite"></main>
+</div>
+<nav class="tabs" aria-label="Разделы"><div id="tabs"></div></nav>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/* ===== Демо-данные. В рабочей версии приходят с сервера бота. ===== */
+const VERSION = "5.0.3.i";
+const MODES = { "402": "402 м", "804": "804 м", shadow: "С тенью", offroad: "Бездорожье" };
+const CARS = [
+  { id: 1, name: "L-VFTS", aka: "семёрка ваз 2107", cls: "A", sub: "Сток" },
+  { id: 2, name: "M-Galant vr-4", aka: "галант", cls: "L", sub: "Кастом" },
+];
+const AUTOTUNE = { "1:402": 6.2410, "1:804": 9.8120, "2:402": 5.8890 };
+const VFTS_BUILD = { hpt: 3049, hp: 1843, grip: 379, kg: 605, front: 45, gears: 6, cx: 0.4643 };
+const GALANT_BUILD = { hpt: 4447, hp: 3686, grip: 379, kg: 829, front: 70, gears: 4, cx: 0.34 };
+const TUNES = [
+  { id: 11, car: 1, mode: "402", time: 6.1072, a100: 1.1476, a200: 2.1833, speed: 365, players: 4, build: VFTS_BUILD,
+    fd: 3.7, ratios: [1.58, 1.221, 0.958, 0.78, 0.67, 0.645], ign: 220, rpm: [2500, 8900],
+    marks: { n2o: null, y: 5694, g: 6100, r: 8420 }, lc: true,
+    sus: { rs: 6.1, rst: 2.6, fs: 2.8, fst: 6, air: -119 }, psi: 0.95, wing: 5, turbo: 100, pulley: null },
+  { id: 12, car: 1, mode: "402", time: 6.1214, a100: 1.1502, a200: 2.1911, speed: 364, players: 2, build: VFTS_BUILD,
+    fd: 3.6, ratios: [1.62, 1.24, 0.97, 0.79, 0.68, 0.65], ign: 210, rpm: [2600, 8900],
+    marks: { n2o: null, y: 5800, g: 6200, r: 8500 }, lc: true,
+    sus: { rs: 6.0, rst: 2.8, fs: 2.8, fst: 6, air: -110 }, psi: 1.0, wing: 4.5, turbo: 90, pulley: null },
+  { id: 13, car: 1, mode: "402", time: 6.1390, a100: 1.1555, a200: 2.2034, speed: 362, players: 1, build: { ...VFTS_BUILD, hpt: 2990, kg: 616 },
+    fd: 3.7, ratios: [1.55, 1.2, 0.95, 0.78, 0.67, 0.645], ign: 230, rpm: [2500, 8800],
+    marks: { n2o: null, y: 5600, g: 6000, r: 8400 }, lc: true,
+    sus: null, psi: 0.95, wing: null, turbo: 100, pulley: null },
+  { id: 14, car: 1, mode: "804", time: 9.6935, a100: 1.1490, a200: 2.1870, speed: 471, players: 2, build: VFTS_BUILD,
+    fd: 3.4, ratios: [1.58, 1.221, 0.958, 0.78, 0.66, 0.6], ign: 220, rpm: [2500, 8900],
+    marks: { n2o: null, y: 5694, g: 6100, r: 8600 }, lc: true,
+    sus: { rs: 6.1, rst: 2.6, fs: 2.8, fst: 6, air: -119 }, psi: 0.95, wing: 6, turbo: 100, pulley: null },
+  { id: 21, car: 2, mode: "402", time: 5.7316, a100: 0.9820, a200: 1.8805, speed: 402, players: 3, build: GALANT_BUILD,
+    fd: 3.1, ratios: [1.22, 0.88, 0.75, 0.63], ign: 570, rpm: [6600, 9900],
+    marks: { n2o: 1500, y: 6553, g: 7000, r: 8700 }, lc: true,
+    sus: { rs: 4.1, rst: 6, fs: 3.1, fst: 6, air: 24 }, psi: null, wing: null, turbo: null, pulley: 100 },
+];
+const MY_SUBS = [
+  { car: "L-VFTS", mode: "402", time: 6.1072, status: "ok", when: "сегодня" },
+  { car: "M-Galant vr-4", mode: "402", time: 5.7420, status: "wait", when: "сегодня" },
+  { car: "L-VFTS", mode: "804", time: 9.7012, status: "no", why: "скрин результата обрезан", when: "вчера" },
+];
+
+/* ===== Состояние ===== */
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+const state = {
+  stack: [{ view: "home" }],
+  premium: store.get("premium", false),
+  garage: store.get("garage", [1]),
+  query: "",
+  mode: "402",
+};
+
+/* ===== Telegram ===== */
+const tg = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData
+  ? window.Telegram.WebApp : null;
+if (tg) {
+  tg.ready(); tg.expand();
+  const applyTheme = () => { document.documentElement.dataset.theme = tg.colorScheme === "light" ? "light" : "dark"; };
+  applyTheme(); tg.onEvent("themeChanged", applyTheme);
+  tg.BackButton.onClick(() => back());
+}
+const haptic = (t = "light") => { try { tg && tg.HapticFeedback.impactOccurred(t); } catch {} };
+const tgUser = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
+
+/* ===== Утилиты ===== */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const sec = x => x == null ? "—" : x.toFixed(4);
+const num = x => x == null ? "—" : String(+(+x).toFixed(3));
+const angle = m => m == null ? "—" : `${m < 0 ? "-" : ""}${Math.floor(Math.abs(m) / 60)}°${String(Math.abs(m) % 60).padStart(2, "0")}'`;
+const norm = s => s.toLowerCase().replace(/ё/g, "е").trim();
+const plural = (n, a, b, c) => { const m = n % 10, h = n % 100; return m === 1 && h !== 11 ? a : m >= 2 && m <= 4 && (h < 12 || h > 14) ? b : c; };
+const players = n => `${n} ${plural(n, "игрок", "игрока", "игроков")}`;
+const carById = id => CARS.find(c => c.id === id);
+const tunesFor = (car, mode) => TUNES.filter(t => t.car === car && t.mode === mode).sort((a, b) => a.time - b.time);
+const ICON = {
+  back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
+  search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>',
+  cars: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 15l2-5.5A2 2 0 0 1 6.9 8h10.2a2 2 0 0 1 1.9 1.5L21 15v3H3z"/><circle cx="7.5" cy="18" r="1.8" fill="currentColor"/><circle cx="16.5" cy="18" r="1.8" fill="currentColor"/></svg>',
+  add: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M12 8v8M8 12h8"/></svg>',
+  me: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c1.2-3.6 4-5.5 7.5-5.5s6.3 1.9 7.5 5.5" stroke-linecap="round"/></svg>',
+};
+let toastTimer;
+function toast(text) {
+  const t = $("#toast"); t.textContent = text; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.hidden = true), 2200);
+}
+
+/* ===== Навигация ===== */
+const current = () => state.stack[state.stack.length - 1];
+function go(view, params = {}) { state.stack.push({ view, ...params }); haptic(); render(true); }
+function tab(view) { state.stack = [{ view }]; haptic(); render(true); }
+function back() { if (state.stack.length > 1) { state.stack.pop(); render(true); } }
+
+function render(scrollTop) {
+  const v = current();
+  const views = { home: Home, car: Car, tune: Tune, add: Add, done: Done, me: Me };
+  const { title, html } = views[v.view](v);
+  $("#top").innerHTML = (state.stack.length > 1 && !tg ? `<button class="back" data-act="back" aria-label="Назад">${ICON.back}</button>` : "")
+    + `<h1>${esc(title)}</h1><span class="demo">Демо-данные</span>`;
+  $("#view").innerHTML = html;
+  const root = state.stack[0].view;
+  $("#tabs").innerHTML = [["home", "Машины", ICON.cars], ["add", "Добавить заезд", ICON.add], ["me", "Профиль", ICON.me]]
+    .map(([k, l, i]) => `<button data-tab="${k}" ${root === k ? 'aria-current="page"' : ""}>${i}<span>${l}</span></button>`).join("");
+  if (tg) state.stack.length > 1 ? tg.BackButton.show() : tg.BackButton.hide();
+  if (scrollTop) window.scrollTo(0, 0);
+  if (v.view === "add") bindAdd();
+}
+
+/* ===== Экраны ===== */
+function carRow(c) {
+  const best = tunesFor(c.id, "402")[0];
+  const n = TUNES.filter(t => t.car === c.id).length;
+  return `<button class="car-row" data-car="${c.id}">
+    <span class="cls ${esc(c.cls)}">${esc(c.cls)}</span>
+    <span style="min-width:0"><div class="name">${esc(c.name)}</div><div class="sub">${esc(c.sub)} · ${n} ${plural(n, "настройка", "настройки", "настроек")}</div></span>
+    <span class="best">${best ? `<b>${sec(best.time)}</b><span>402 м</span>` : `<span>нет данных</span>`}</span>
+  </button>`;
+}
+
+function Home() {
+  const q = norm(state.query);
+  const list = q ? CARS.filter(c => norm(c.name + " " + c.aka).includes(q)) : CARS;
+  const garage = state.garage.map(carById).filter(Boolean);
+  return {
+    title: "Настройки",
+    html: `
+      <div class="search">${ICON.search}
+        <input id="q" type="search" placeholder="Машина: L-VFTS, галант, семёрка" value="${esc(state.query)}" autocomplete="off" enterkeyhint="search" aria-label="Поиск машины">
+      </div>
+      ${garage.length && !q ? `<div class="section-title">Мой гараж</div>
+        <div class="garage">${garage.map(c => `<button class="chip" data-car="${c.id}"><span class="cls ${c.cls}" style="min-width:22px;height:22px;font-size:11px">${c.cls}</span>${esc(c.name)}</button>`).join("")}</div>` : ""}
+      <div class="section-title">${q ? "Найдено" : "Все машины"}</div>
+      ${list.length ? `<div class="cars" id="cars">${list.map(carRow).join("")}</div>`
+        : `<p class="empty">Такой машины пока нет в базе. Пришлите первый заезд на ней — она появится, а вы получите дни премиума.</p>
+           <button class="btn ghost" data-tab="add">Добавить заезд</button>`}
+      <p class="note">Версия игры ${VERSION}. Настройки со старых версий в выдачу не попадают.</p>`,
+  };
+}
+
+function Car({ id }) {
+  const c = carById(id);
+  const list = tunesFor(id, state.mode);
+  const auto = AUTOTUNE[`${id}:${state.mode}`];
+  const best = list[0];
+  const inGarage = state.garage.includes(id);
+  const shown = state.premium ? list : list.slice(0, 3);
+  const delta = best && auto && best.time < auto
+    ? `<span class="delta">−${(auto - best.time).toFixed(3)} с к игровой автонастройке (${sec(auto)})</span>`
+    : `<span class="delta none">Нет замера автонастройки для сравнения</span>`;
+  return {
+    title: "Настройки машины",
+    html: `
+      <div class="car-head">
+        <span class="cls ${c.cls}">${c.cls}</span>
+        <div style="min-width:0"><h2>${esc(c.name)}</h2><p>${esc(c.sub)} · v${VERSION}</p></div>
+        <button class="fav" data-fav="${id}" aria-pressed="${inGarage}">${inGarage ? "В гараже" : "В гараж"}</button>
+      </div>
+      <div class="modes" role="tablist">${Object.entries(MODES).map(([k, l]) =>
+        `<button role="tab" data-mode="${k}" aria-selected="${k === state.mode}">${l}</button>`).join("")}</div>
+      ${best ? `
+        <div class="board">
+          <div class="lights run" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="go"></i></div>
+          <div class="label">Лучшее проверенное время · ${MODES[state.mode]}</div>
+          <div class="time">${sec(best.time)}<small>с</small></div>
+          ${delta}
+        </div>
+        <ol class="tunes">${shown.map((t, i) => `
+          <li><button class="tune-row" data-tune="${t.id}">
+            <span class="rank">${i + 1}</span>
+            <span class="t">${sec(t.time)}${auto && t.time < auto ? `<em>−${(auto - t.time).toFixed(3)}</em>` : ""}</span>
+            <span class="who">${players(t.players)}</span>
+            <span class="meta">${t.build.hpt} л.с./т · ${t.build.kg} кг · зацеп ${t.build.grip} · ${t.build.gears} пер.${state.premium ? "" : ' · <span class="lock">настройка в премиуме</span>'}</span>
+          </button></li>`).join("")}</ol>
+        ${!state.premium && list.length > 3 ? `<p class="note">Ещё ${list.length - 3} в премиуме.</p>` : ""}
+        <p class="note">Время подтверждено скриншотами заездов. «${players(2)}» — столько людей повторили результат.</p>`
+      : `<div class="board"><div class="label">${MODES[state.mode]}</div>
+          <p class="empty" style="padding:12px 0 4px">Для этого режима проверенных настроек пока нет. Пришлите свой заезд — станете первым в таблице.</p>
+          <button class="btn" data-tab="add">Добавить заезд</button></div>`}`,
+  };
+}
+
+function Tune({ id }) {
+  const t = TUNES.find(x => x.id === id);
+  const c = carById(t.car);
+  const locked = !state.premium;
+  const v = x => `<span class="val">${locked ? "0.00" : x}</span>`;
+  const maxR = Math.max(...t.ratios);
+  const blocks = [];
+  blocks.push(`<div class="block"><h3>Коробка передач</h3>
+    <div class="ladder">${t.ratios.map((r, i) => `<div class="gear"><span>${i + 1}</span><span class="bar"><i style="width:${locked ? 60 - i * 7 : (r / maxR * 100).toFixed(1)}%"></i></span><b>${v(num(r))}</b></div>`).join("")}</div>
+    <dl class="kv"><dt>Главная пара</dt><dd>${v(num(t.fd))}</dd></dl></div>`);
+  blocks.push(`<div class="block"><h3>Зажигание</h3><dl class="kv">
+    <dt>Угол опережения</dt><dd>${v(angle(t.ign))}</dd>
+    <dt>Диапазон оборотов</dt><dd>${v(`${t.rpm[0]}–${t.rpm[1]}`)}</dd></dl></div>`);
+  blocks.push(`<div class="block"><h3>Обороты на динамометре</h3><dl class="kv">
+    ${t.marks.n2o ? `<dt>N2O</dt><dd>${v(t.marks.n2o)}</dd>` : ""}
+    <dt>Жёлтый маркер</dt><dd>${v(t.marks.y)}</dd>
+    <dt>Зелёный маркер</dt><dd>${v(t.marks.g)}</dd>
+    <dt>Красный маркер</dt><dd>${v(t.marks.r)}</dd>
+    <dt>Launch control</dt><dd>${v(t.lc ? "вкл" : "выкл")}</dd></dl></div>`);
+  if (t.sus) blocks.push(`<div class="block"><h3>Подвеска</h3><dl class="kv">
+    <dt>Задние пружины / стойки</dt><dd>${v(`${num(t.sus.rs)} / ${num(t.sus.rst)}`)}</dd>
+    <dt>Передние пружины / стойки</dt><dd>${v(`${num(t.sus.fs)} / ${num(t.sus.fst)}`)}</dd>
+    <dt>Пневмоподвеска</dt><dd>${v(t.sus.air)}</dd></dl></div>`);
+  const extra = [
+    t.psi != null && `<dt>Давление шин</dt><dd>${v(num(t.psi) + " PSI")}</dd>`,
+    t.wing != null && `<dt>Антикрыло</dt><dd>${v(num(t.wing) + "°")}</dd>`,
+    t.turbo != null && `<dt>Жёсткость пружины турбо</dt><dd>${v(t.turbo + "%")}</dd>`,
+    t.pulley != null && `<dt>Шкив нагнетателя</dt><dd>${v(t.pulley + "%")}</dd>`,
+  ].filter(Boolean);
+  if (extra.length) blocks.push(`<div class="block"><h3>Шины, крыло, наддув</h3><dl class="kv">${extra.join("")}</dl></div>`);
+
+  return {
+    title: `${c.name} · ${sec(t.time)}`,
+    html: `
+      <div class="slip ${locked ? "locked" : ""}">
+        <div class="slip-head">
+          <div><div class="hint">${MODES[t.mode]} · v${VERSION}</div><div class="time">${sec(t.time)} с</div></div>
+          <div class="stats">${c.cls} ${esc(c.sub)}<br>${t.build.hpt} л.с./т · ${t.build.kg} кг<br>${players(t.players)}</div>
+        </div>
+        <div class="slip-runs">
+          <div>До 100 км/ч<b>${sec(t.a100)}</b></div>
+          <div>До 200 км/ч<b>${sec(t.a200)}</b></div>
+          <div>На финише<b>${t.speed} км/ч</b></div>
+        </div>
+        ${blocks.join("")}
+      </div>
+      ${locked ? `<div class="paywall">
+          <p><b>Цифры настройки открываются в премиуме</b></p>
+          <p class="sub">Передаточные числа, зажигание, обороты, подвеска и наддув для всех машин. Или бесплатно: 2 дня премиума за каждый принятый заезд.</p>
+          <button class="btn" data-act="buy">Оформить за 150 ⭐</button>
+          <button class="btn ghost" data-tab="add">Добавить заезд и получить дни</button>
+        </div>`
+      : `<p class="note">Выставьте значения в игре в том же порядке: КПП → зажигание → обороты на динамометре. Сохраните в свободный слот 1–5.</p>`}`,
+  };
+}
+
+function Add() {
+  const d = state.draft || (state.draft = { mode: "402", gears: 6 });
+  return {
+    title: "Добавить заезд",
+    html: `
+      <form id="add" novalidate>
+        <p class="hint">Перепишите цифры с экранов игры и приложите скриншоты: по ним модератор проверит заезд. За принятый заезд — 2 дня премиума.</p>
+        <fieldset><legend>Заезд</legend>
+          <div class="seg" role="radiogroup" aria-label="Режим">${Object.entries(MODES).map(([k, l]) =>
+            `<label><input type="radio" name="mode" value="${k}" ${d.mode === k ? "checked" : ""}><span>${l}</span></label>`).join("")}</div>
+          <div class="field"><label for="f-car">Машина, как в гараже</label>
+            <input id="f-car" list="car-list" placeholder="L-VFTS" autocomplete="off" value="${esc(d.car || "")}">
+            <datalist id="car-list">${CARS.map(c => `<option value="${esc(c.name)}">`).join("")}</datalist></div>
+        </fieldset>
+
+        <div class="panel"><fieldset><legend>Результат</legend>
+          <p class="hint">Колонка «Новый» в таблице результатов.</p>
+          <div class="grid2">
+            <div class="field"><label for="f-time">Время, с</label><input id="f-time" inputmode="decimal" placeholder="6.1072"></div>
+            <div class="field"><label for="f-speed">Скорость на финише</label><input id="f-speed" inputmode="numeric" placeholder="365"></div>
+            <div class="field"><label for="f-100">Разгон до 100, с</label><input id="f-100" inputmode="decimal" placeholder="1.1476"></div>
+            <div class="field"><label for="f-200">Разгон до 200, с</label><input id="f-200" inputmode="decimal" placeholder="2.1833"></div>
+          </div></fieldset></div>
+
+        <div class="panel"><fieldset><legend>Коробка передач</legend>
+          <div class="grid2">
+            <div class="field"><label for="f-fd">Главная пара</label><input id="f-fd" inputmode="decimal" placeholder="3.7"></div>
+            <div class="field"><label for="f-gears">Передач</label>
+              <select id="f-gears">${[3, 4, 5, 6, 7, 8].map(n => `<option ${n === d.gears ? "selected" : ""}>${n}</option>`).join("")}</select></div>
+          </div>
+          <div class="ratios" id="ratios"></div></fieldset></div>
+
+        <div class="panel"><fieldset><legend>Машина</legend>
+          <p class="hint">С карточки в гараже.</p>
+          <div class="grid3">
+            <div class="field"><label for="f-hpt">Л.с. на тонну</label><input id="f-hpt" inputmode="numeric" placeholder="3049"></div>
+            <div class="field"><label for="f-kg">Масса, кг</label><input id="f-kg" inputmode="numeric" placeholder="605"></div>
+            <div class="field"><label for="f-grip">Зацеп</label><input id="f-grip" inputmode="numeric" placeholder="379"></div>
+          </div></fieldset></div>
+
+        <details class="panel"><summary>Зажигание и обороты</summary><div>
+          <div class="grid2">
+            <div class="field"><label for="f-ign">Угол опережения</label><input id="f-ign" placeholder="3° 40'"></div>
+            <div class="field"><label for="f-rpm">Диапазон оборотов</label><input id="f-rpm" placeholder="2500–8900"></div>
+          </div>
+          <div class="grid3">
+            <div class="field"><label for="f-y">Жёлтый</label><input id="f-y" inputmode="numeric" placeholder="5694"></div>
+            <div class="field"><label for="f-g">Зелёный</label><input id="f-g" inputmode="numeric" placeholder="6100"></div>
+            <div class="field"><label for="f-r">Красный</label><input id="f-r" inputmode="numeric" placeholder="8420"></div>
+          </div></div></details>
+
+        <details class="panel"><summary>Подвеска, шины, крыло, наддув</summary><div>
+          <div class="grid2">
+            <div class="field"><label for="f-rs">Задние пружины</label><input id="f-rs" inputmode="decimal" placeholder="6.1"></div>
+            <div class="field"><label for="f-rst">Задние стойки</label><input id="f-rst" inputmode="decimal" placeholder="2.6"></div>
+            <div class="field"><label for="f-fs">Передние пружины</label><input id="f-fs" inputmode="decimal" placeholder="2.8"></div>
+            <div class="field"><label for="f-fst">Передние стойки</label><input id="f-fst" inputmode="decimal" placeholder="6"></div>
+            <div class="field"><label for="f-air">Пневмоподвеска</label><input id="f-air" inputmode="numeric" placeholder="-119"></div>
+            <div class="field"><label for="f-psi">Давление шин, PSI</label><input id="f-psi" inputmode="decimal" placeholder="0.95"></div>
+            <div class="field"><label for="f-wing">Антикрыло, °</label><input id="f-wing" inputmode="decimal" placeholder="5.00"></div>
+            <div class="field"><label for="f-boost">Пружина или шкив, %</label><input id="f-boost" inputmode="numeric" placeholder="100"></div>
+          </div></div></details>
+
+        <fieldset><legend>Скриншоты</legend>
+          <label class="upload" for="f-shots">
+            <input id="f-shots" type="file" accept="image/*" multiple>
+            <b id="shots-label">Выбрать скриншоты</b>
+            <span>Обязательно: карточка машины, КПП, результат</span>
+          </label>
+        </fieldset>
+        <p class="err" id="add-err" hidden></p>
+        <button class="btn" type="submit">Отправить на проверку</button>
+      </form>`,
+  };
+}
+
+function Done() {
+  return {
+    title: "Заявка отправлена",
+    html: `<div class="done">
+      <div class="lights" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="go"></i></div>
+      <h2>Заезд на проверке</h2>
+      <p>Модератор сверит цифры со скриншотами. Когда заезд примут, придёт сообщение от бота и 2 дня премиума.</p>
+      <p class="hint">В демо заявка никуда не отправляется.</p>
+      <button class="btn ghost" data-tab="me" style="max-width:280px">Мои заявки</button>
+    </div>`,
+  };
+}
+
+function Me() {
+  const name = tgUser ? [tgUser.first_name, tgUser.last_name].filter(Boolean).join(" ") : "Игрок";
+  const st = { ok: ["ok", "принят"], wait: ["wait", "на проверке"], no: ["no", "отклонён"] };
+  return {
+    title: "Профиль",
+    html: `
+      <div class="me"><h2>${esc(name)}</h2>
+        <p>${state.premium ? "Премиум активен до 24.11.2026" : "Бесплатный доступ: топ-3 без цифр настройки"} · доверие 2</p></div>
+      ${state.premium
+        ? `<button class="btn ghost" data-act="unbuy">Демо: выключить премиум</button>`
+        : `<div class="paywall" style="margin-top:0">
+            <p><b>Премиум — 150 ⭐ в месяц</b></p>
+            <p class="sub">Все настройки полностью, для всех машин и режимов. За каждый принятый заезд — 2 дня бесплатно.</p>
+            <button class="btn" data-act="buy">Оформить за 150 ⭐</button></div>`}
+      <div class="section-title">Мои заявки</div>
+      <div class="subs">${MY_SUBS.map(s => `<div class="sub-row">
+        <span>${esc(s.car)} · ${MODES[s.mode]} · ${sec(s.time)} с</span>
+        <span class="pill ${st[s.status][0]}">${st[s.status][1]}</span>
+        <span class="s">${s.when}${s.why ? " · " + esc(s.why) : ""}</span></div>`).join("")}</div>
+      <p class="note">Оплата проходит звёздами Telegram. В демо кнопка просто включает премиум, чтобы посмотреть закрытые экраны.</p>`,
+  };
+}
+
+/* ===== Форма добавления ===== */
+function drawRatios(n) {
+  const box = $("#ratios"); if (!box) return;
+  const old = [...box.querySelectorAll("input")].map(i => i.value);
+  box.innerHTML = Array.from({ length: n }, (_, i) =>
+    `<div class="field"><label for="f-r${i + 1}">${i + 1} передача</label><input id="f-r${i + 1}" inputmode="decimal" value="${esc(old[i] || "")}"></div>`).join("");
+}
+function bindAdd() {
+  drawRatios(state.draft.gears);
+  $("#f-gears").addEventListener("change", e => { state.draft.gears = +e.target.value; drawRatios(state.draft.gears); });
+  $("#f-shots").addEventListener("change", e => {
+    const n = e.target.files.length;
+    $("#shots-label").textContent = n ? `Выбрано: ${n} ${plural(n, "скриншот", "скриншота", "скриншотов")}` : "Выбрать скриншоты";
+  });
+  $("#add").addEventListener("submit", e => {
+    e.preventDefault();
+    const f = e.target;
+    const val = id => ($("#" + id).value || "").replace(",", ".").trim();
+    const need = ["f-car", "f-time", "f-fd", "f-hpt", ...Array.from({ length: state.draft.gears }, (_, i) => `f-r${i + 1}`)];
+    let bad = need.filter(id => !val(id) || (id !== "f-car" && isNaN(+val(id))));
+    f.querySelectorAll("[aria-invalid]").forEach(i => i.removeAttribute("aria-invalid"));
+    bad.forEach(id => $("#" + id).setAttribute("aria-invalid", "true"));
+    const err = $("#add-err");
+    const msgs = [];
+    if (bad.length) msgs.push("Заполните отмеченные поля: машина, время, главная пара, все передачи, л.с. на тонну.");
+    if (!$("#f-shots").files.length) msgs.push("Приложите скриншоты: без них заезд не проверить.");
+    const a100 = +val("f-100"), a200 = +val("f-200"), time = +val("f-time");
+    if (a100 && a200 && time && !(a100 < a200 && a200 < time)) msgs.push("Разгон до 100, до 200 и общее время должны идти по возрастанию — проверьте цифры.");
+    if (msgs.length) { err.textContent = msgs.join(" "); err.hidden = false; haptic("medium"); (bad[0] ? $("#" + bad[0]) : err).focus(); return; }
+    err.hidden = true;
+    state.draft = null;
+    try { tg && tg.HapticFeedback.notificationOccurred("success"); } catch {}
+    state.stack = [{ view: "add" }, { view: "done" }];
+    render(true);
+  });
+  document.querySelectorAll('input[name="mode"]').forEach(r => r.addEventListener("change", e => (state.draft.mode = e.target.value)));
+  $("#f-car").addEventListener("input", e => (state.draft.car = e.target.value));
+}
+
+/* ===== События ===== */
+document.addEventListener("click", e => {
+  const el = e.target.closest("[data-car],[data-tune],[data-mode],[data-tab],[data-fav],[data-act]");
+  if (!el) return;
+  const d = el.dataset;
+  if (d.tab) return tab(d.tab);
+  if (d.car) return go("car", { id: +d.car });
+  if (d.tune) return go("tune", { id: +d.tune });
+  if (d.mode) { state.mode = d.mode; haptic(); return render(false); }
+  if (d.fav) {
+    const id = +d.fav;
+    state.garage = state.garage.includes(id) ? state.garage.filter(x => x !== id) : [...state.garage, id];
+    store.set("garage", state.garage); haptic();
+    toast(state.garage.includes(id) ? "Добавлено в гараж" : "Убрано из гаража");
+    return render(false);
+  }
+  if (d.act === "back") return back();
+  if (d.act === "buy") { state.premium = true; store.set("premium", true); toast("Демо: премиум включён"); return render(false); }
+  if (d.act === "unbuy") { state.premium = false; store.set("premium", false); toast("Демо: премиум выключен"); return render(false); }
+});
+document.addEventListener("input", e => {
+  if (e.target.id !== "q") return;
+  state.query = e.target.value;
+  const pos = e.target.selectionStart;
+  render(false);
+  const q = $("#q"); q.focus(); q.setSelectionRange(pos, pos);
+});
+
+render(true);
+</script>
+
+</body>
+</html>
