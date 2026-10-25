@@ -4,6 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<!-- Yandex.Metrika counter -->
+<script>
+(function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+m[i].l=1*new Date();
+for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+(window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+ym(113789169, "init", { clickmap: true, trackLinks: true, accurateTrackBounce: true, webvisor: true });
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/113789169" style="position:absolute; left:-9999px;" alt=""></div></noscript>
+<!-- /Yandex.Metrika counter -->
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}img{max-width:100%}</style>
 <title>402 Настройки</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -339,6 +350,10 @@ if (tg) {
 }
 const haptic = (t = "light") => { try { tg && tg.HapticFeedback.impactOccurred(t); } catch {} };
 const tgUser = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
+/* Яндекс Метрика: цели для проверки спроса. Без счётчика (превью, локально) вызовы молча пропускаются. */
+const METRIKA_ID = 113789169;
+const track = (goal, params) => { try { window.ym && window.ym(METRIKA_ID, "reachGoal", goal, params); } catch {} };
+let missTimer;
 
 /* ===== Утилиты ===== */
 const $ = (s, r = document) => r.querySelector(s);
@@ -656,6 +671,7 @@ function bindAdd() {
     if (a100 && a200 && time && !(a100 < a200 && a200 < time)) msgs.push("Разгон до 100, до 200 и общее время должны идти по возрастанию — проверьте цифры.");
     if (msgs.length) { err.textContent = msgs.join(" "); err.hidden = false; haptic("medium"); (bad[0] ? $("#" + bad[0]) : err).focus(); return; }
     err.hidden = true;
+    track("add_submit", { car: val("f-car") });
     state.draft = null;
     try { tg && tg.HapticFeedback.notificationOccurred("success"); } catch {}
     state.stack = [{ view: "add" }, { view: "done" }];
@@ -671,8 +687,8 @@ document.addEventListener("click", e => {
   if (!el) return;
   const d = el.dataset;
   if (d.tab) return tab(d.tab);
-  if (d.car) return go("car", { id: +d.car });
-  if (d.tune) return go("tune", { id: +d.tune });
+  if (d.car) { track("open_car", { car: carById(+d.car).name }); return go("car", { id: +d.car }); }
+  if (d.tune) { track("open_tune"); return go("tune", { id: +d.tune }); }
   if (d.mode) { state.mode = d.mode; haptic(); return render(false); }
   if (d.fav) {
     const id = +d.fav;
@@ -682,12 +698,16 @@ document.addEventListener("click", e => {
     return render(false);
   }
   if (d.act === "back") return back();
-  if (d.act === "buy") { state.premium = true; store.set("premium", true); toast("Демо: премиум включён"); return render(false); }
+  if (d.act === "buy") { track("buy_click"); state.premium = true; store.set("premium", true); toast("Оплата скоро. Пока открыли бесплатно"); return render(false); }
   if (d.act === "unbuy") { state.premium = false; store.set("premium", false); toast("Демо: премиум выключен"); return render(false); }
 });
 document.addEventListener("input", e => {
   if (e.target.id !== "q") return;
   state.query = e.target.value;
+  clearTimeout(missTimer);
+  const nq = norm(state.query);
+  if (nq.length >= 3 && !CARS.some(c => norm(c.name + " " + c.aka).includes(nq)))
+    missTimer = setTimeout(() => track("search_miss", { query: nq }), 1500);
   const pos = e.target.selectionStart;
   render(false);
   const q = $("#q"); q.focus(); q.setSelectionRange(pos, pos);
