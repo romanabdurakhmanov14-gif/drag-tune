@@ -241,6 +241,30 @@ details.panel > div { display: grid; gap: 12px; margin-top: 4px; }
 .seg input:checked + span { border-color: var(--amber); color: var(--amber); font-weight: 600; }
 .seg input:focus-visible + span { outline: 2px solid var(--amber); outline-offset: 2px; }
 
+.list-h { font: 600 14px/1 var(--body); margin: 0; }
+.check { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; }
+.check li { display: grid; grid-template-columns: 18px 1fr; gap: 10px; align-items: start; }
+.check li::before { content: ""; width: 14px; height: 14px; margin-top: 3px; border-radius: 4px; border: 2px solid var(--amber); }
+.check.soft li { color: var(--muted); }
+.check.soft li::before { border-color: var(--line); }
+a.btn { text-decoration: none; }
+.choices { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 6px 0 16px; }
+.choice { display: grid; gap: 4px; text-align: left; padding: 14px; border-radius: var(--r-panel); border: 1px solid var(--line); background: var(--surface); }
+.choice b { font-size: 16px; }
+.choice span { color: var(--muted); font-size: 13px; line-height: 1.35; }
+.choice[aria-pressed="true"] { border-color: var(--amber); }
+.choice[aria-pressed="true"] b { color: var(--amber); }
+.steps { margin: 0; padding: 0; list-style: none; counter-reset: s; display: grid; gap: 14px; }
+.steps li { counter-increment: s; display: grid; grid-template-columns: 30px 1fr; gap: 12px; align-items: start; color: var(--muted); }
+.steps li span { padding-top: 4px; min-width: 0; }
+.steps li::before { content: counter(s); font: 700 15px/30px var(--display); text-align: center; width: 30px; height: 30px; border-radius: 50%; background: var(--raise); color: var(--amber); }
+.steps li b { color: var(--fg); font-weight: 600; }
+.cmp { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 18px; }
+.cmp input[aria-invalid="true"] { border-color: var(--stop); }
+.cmp input { height: 46px; border-radius: var(--r-control); border: 1px solid var(--line); background: var(--surface); padding: 0 12px; font-size: 16px; min-width: 0; width: 100%; }
+.cmp .btn { width: auto; min-height: 46px; padding: 0 18px; }
+.cmp-out { margin: 10px 0 0; font-size: 14px; }
+.cmp-out b { color: var(--fg); }
 .done { text-align: center; padding: 40px 8px; display: grid; gap: 14px; justify-items: center; }
 .done h2 { font: 700 22px/1.2 var(--display); margin: 0; }
 .done p { margin: 0; color: var(--muted); max-width: 34ch; }
@@ -320,11 +344,6 @@ const TUNES = [
     marks: { n2o: 1500, y: 6553, g: 7000, r: 8700 }, lc: true,
     sus: { rs: 4.1, rst: 6, fs: 3.1, fst: 6, air: 24 }, psi: null, wing: null, turbo: null, pulley: 100 },
 ];
-const MY_SUBS = [
-  { car: "L-VFTS", mode: "402", time: 6.1072, status: "ok", when: "сегодня" },
-  { car: "M-Galant vr-4", mode: "402", time: 5.7420, status: "wait", when: "сегодня" },
-  { car: "L-VFTS", mode: "804", time: 9.7012, status: "no", why: "скрин результата обрезан", when: "вчера" },
-];
 
 /* ===== Состояние ===== */
 const store = {
@@ -333,7 +352,7 @@ const store = {
 };
 const state = {
   stack: [{ view: "home" }],
-  premium: store.get("premium", false),
+  premium: false,
   garage: store.get("garage", [1]),
   query: "",
   mode: "402",
@@ -354,6 +373,52 @@ const tgUser = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
 const METRIKA_ID = 113789169;
 const track = (goal, params) => { try { window.ym && window.ym(METRIKA_ID, "reachGoal", goal, params); } catch {} };
 let missTimer;
+/* Платный доступ: оплата переводом в личку, после оплаты — код. Код меняется раз в месяц. */
+const PRICE_TUNE = 249;            /* одна настройка */
+const SEASON = "лето 2026";         /* текущий сезон: настройки действуют до его смены */
+const ACCESS_HASH = "78b70a23";
+const h32 = s => { let h = 5381; for (const ch of s) h = (Math.imul(h, 33) ^ ch.codePointAt(0)) >>> 0; return h.toString(16); };
+const normCode = s => String(s || "").trim().toUpperCase().replace(/\s+/g, "");
+state.premium = h32(normCode(store.get("code", ""))) === ACCESS_HASH;
+function paywall(t) {
+  const what = t ? `${esc(carById(t.car).name)}, ${MODES[t.mode]}, ${sec(t.time)} с` : "";
+  return `<div class="paywall">
+    <p><b>${t ? "Эта настройка" : "Одна настройка"} — ${PRICE_TUNE} ₽</b></p>
+    <p class="sub">Передаточные числа, главная пара, зажигание, обороты, подвеска и наддув. Действует до смены сезона.</p>
+    <a class="btn" id="buy" data-what="${t ? t.id : ""}" href="https://t.me/${SUBMIT_TG}" target="_blank" rel="noopener">Купить${t ? " эту настройку" : " настройку"}</a>
+    <p class="sub">${t ? `Напишите @${SUBMIT_TG}: «${what}».` : `Напишите @${SUBMIT_TG}, какая машина и режим нужны.`} Оплата переводом, после оплаты пришлём все цифры.</p>
+  </div>`;
+}
+/* Прямая ссылка на Mini App (после регистрации через /newapp в BotFather) */
+const APP_LINK = "https://t.me/DragSettingBot/app";
+function share(param, text) {
+  const link = `${APP_LINK}?startapp=${param}`;
+  track("share_click", { what: param });
+  haptic();
+  if (tg) return tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`);
+  if (navigator.share) return navigator.share({ text, url: link }).catch(() => {});
+  try {
+    navigator.clipboard.writeText(link).then(() => toast("Ссылка скопирована"), () => toast(link));
+  } catch { toast(link); }
+}
+/* Открытие по прямой ссылке: tune_11 — настройка, car_1_402 — машина в режиме */
+function openStartParam() {
+  let sp = tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param;
+  if (!sp) { try { sp = new URLSearchParams(location.search).get("tgWebAppStartParam"); } catch {} }
+  if (!sp) return;
+  let m;
+  if ((m = sp.match(/^tune_(\d+)$/))) {
+    const t = TUNES.find(x => x.id === +m[1]);
+    if (!t) return;
+    state.mode = t.mode;
+    state.stack = [{ view: "home" }, { view: "car", id: t.car }, { view: "tune", id: t.id }];
+  } else if ((m = sp.match(/^car_(\d+)(?:_(\w+))?$/))) {
+    if (!carById(+m[1])) return;
+    if (m[2] && MODES[m[2]]) state.mode = m[2];
+    state.stack = [{ view: "home" }, { view: "car", id: +m[1] }];
+  } else return;
+  track("deeplink_open", { param: sp });
+}
 
 /* ===== Утилиты ===== */
 const $ = (s, r = document) => r.querySelector(s);
@@ -393,11 +458,10 @@ function render(scrollTop) {
     + `<h1>${esc(title)}</h1><span class="demo">Демо-данные</span>`;
   $("#view").innerHTML = html;
   const root = state.stack[0].view;
-  $("#tabs").innerHTML = [["home", "Машины", ICON.cars], ["add", "Добавить заезд", ICON.add], ["me", "Профиль", ICON.me]]
+  $("#tabs").innerHTML = [["home", "Машины", ICON.cars], ["add", "Поделиться", ICON.add], ["me", "Профиль", ICON.me]]
     .map(([k, l, i]) => `<button data-tab="${k}" ${root === k ? 'aria-current="page"' : ""}>${i}<span>${l}</span></button>`).join("");
   if (tg) state.stack.length > 1 ? tg.BackButton.show() : tg.BackButton.hide();
   if (scrollTop) window.scrollTo(0, 0);
-  if (v.view === "add") bindAdd();
 }
 
 /* ===== Экраны ===== */
@@ -425,9 +489,9 @@ function Home() {
         <div class="garage">${garage.map(c => `<button class="chip" data-car="${c.id}"><span class="cls ${c.cls}" style="min-width:22px;height:22px;font-size:11px">${c.cls}</span>${esc(c.name)}</button>`).join("")}</div>` : ""}
       <div class="section-title">${q ? "Найдено" : "Все машины"}</div>
       ${list.length ? `<div class="cars" id="cars">${list.map(carRow).join("")}</div>`
-        : `<p class="empty">Такой машины пока нет в базе. Пришлите первый заезд на ней — она появится, а вы получите дни премиума.</p>
+        : `<p class="empty">Такой машины пока нет в базе. Пришлите настройку на ней — получите любую другую бесплатно, а вы будете указаны автором.</p>
            <button class="btn ghost" data-tab="add">Добавить заезд</button>`}
-      <p class="note">Версия игры ${VERSION}. Настройки со старых версий в выдачу не попадают.</p>`,
+      <p class="note">Сезон ${SEASON}, версия игры ${VERSION}. Зацеп меняется каждый сезон, поэтому здесь только настройки текущего.</p>`,
   };
 }
 
@@ -437,7 +501,7 @@ function Car({ id }) {
   const auto = AUTOTUNE[`${id}:${state.mode}`];
   const best = list[0];
   const inGarage = state.garage.includes(id);
-  const shown = state.premium ? list : list.slice(0, 3);
+  const shown = list;
   const delta = best && auto && best.time < auto
     ? `<span class="delta">−${(auto - best.time).toFixed(3)} с к игровой автонастройке (${sec(auto)})</span>`
     : `<span class="delta none">Нет замера автонастройки для сравнения</span>`;
@@ -446,7 +510,7 @@ function Car({ id }) {
     html: `
       <div class="car-head">
         <span class="cls ${c.cls}">${c.cls}</span>
-        <div style="min-width:0"><h2>${esc(c.name)}</h2><p>${esc(c.sub)} · v${VERSION}</p></div>
+        <div style="min-width:0"><h2>${esc(c.name)}</h2><p>${esc(c.sub)} · сезон ${SEASON}</p></div>
         <button class="fav" data-fav="${id}" aria-pressed="${inGarage}">${inGarage ? "В гараже" : "В гараж"}</button>
       </div>
       <div class="modes" role="tablist">${Object.entries(MODES).map(([k, l]) =>
@@ -457,16 +521,21 @@ function Car({ id }) {
           <div class="label">Лучшее проверенное время · ${MODES[state.mode]}</div>
           <div class="time">${sec(best.time)}<small>с</small></div>
           ${delta}
+          <form class="cmp" id="cmp" novalidate>
+            <input id="my-time" inputmode="decimal" placeholder="Ваше время, с" aria-label="Ваше время на этой машине" autocomplete="off">
+            <button class="btn ghost" type="submit">Сравнить</button>
+          </form>
+          <p class="cmp-out" id="cmp-out" role="status" hidden></p>
         </div>
         <ol class="tunes">${shown.map((t, i) => `
           <li><button class="tune-row" data-tune="${t.id}">
             <span class="rank">${i + 1}</span>
             <span class="t">${sec(t.time)}${auto && t.time < auto ? `<em>−${(auto - t.time).toFixed(3)}</em>` : ""}</span>
             <span class="who">${players(t.players)}</span>
-            <span class="meta">${t.build.hpt} л.с./т · ${t.build.kg} кг · зацеп ${t.build.grip} · ${t.build.gears} пер.${state.premium ? "" : ' · <span class="lock">настройка в премиуме</span>'}</span>
+            <span class="meta">${t.build.hpt} л.с./т · ${t.build.kg} кг · зацеп ${t.build.grip} · ${t.build.gears} пер.${state.premium ? "" : ` · <span class="lock">настройка ${PRICE_TUNE} ₽</span>`}</span>
           </button></li>`).join("")}</ol>
-        ${!state.premium && list.length > 3 ? `<p class="note">Ещё ${list.length - 3} в премиуме.</p>` : ""}
-        <p class="note">Время подтверждено скриншотами заездов. «${players(2)}» — столько людей повторили результат.</p>`
+        <p class="note">Время подтверждено скриншотами заездов. «${players(2)}» — столько людей повторили результат.</p>
+        <button class="btn ghost" style="margin-top:16px" data-act="share-car" data-id="${id}">Поделиться машиной</button>`
       : `<div class="board"><div class="label">${MODES[state.mode]}</div>
           <p class="empty" style="padding:12px 0 4px">Для этого режима проверенных настроек пока нет. Пришлите свой заезд — станете первым в таблице.</p>
           <button class="btn" data-tab="add">Добавить заезд</button></div>`}`,
@@ -509,8 +578,8 @@ function Tune({ id }) {
     html: `
       <div class="slip ${locked ? "locked" : ""}">
         <div class="slip-head">
-          <div><div class="hint">${MODES[t.mode]} · v${VERSION}</div><div class="time">${sec(t.time)} с</div></div>
-          <div class="stats">${c.cls} ${esc(c.sub)}<br>${t.build.hpt} л.с./т · ${t.build.kg} кг<br>${players(t.players)}</div>
+          <div><div class="hint">${MODES[t.mode]} · сезон ${SEASON}</div><div class="time">${sec(t.time)} с</div></div>
+          <div class="stats">${c.cls} ${esc(c.sub)}<br>${t.build.hpt} л.с./т · ${t.build.kg} кг<br>${players(t.players)}${t.by ? `<br>автор @${esc(t.by)}` : ""}</div>
         </div>
         <div class="slip-runs">
           <div>До 100 км/ч<b>${sec(t.a100)}</b></div>
@@ -519,89 +588,50 @@ function Tune({ id }) {
         </div>
         ${blocks.join("")}
       </div>
-      ${locked ? `<div class="paywall">
-          <p><b>Цифры настройки открываются в премиуме</b></p>
-          <p class="sub">Передаточные числа, зажигание, обороты, подвеска и наддув для всех машин. Или бесплатно: 2 дня премиума за каждый принятый заезд.</p>
-          <button class="btn" data-act="buy">Оформить за 150 ⭐</button>
-          <button class="btn ghost" data-tab="add">Добавить заезд и получить дни</button>
-        </div>`
+      <button class="btn ghost" style="margin-top:12px" data-act="share-tune" data-id="${t.id}">Поделиться настройкой</button>
+      ${locked ? paywall(t)
       : `<p class="note">Выставьте значения в игре в том же порядке: КПП → зажигание → обороты на динамометре. Сохраните в свободный слот 1–5.</p>`}`,
   };
 }
 
+const SUBMIT_TG = "hexz1";
 function Add() {
-  const d = state.draft || (state.draft = { mode: "402", gears: 6 });
+  const mode = state.addMode || "swap";
+  const choice = (k, title, sub) => `<button class="choice" data-act="addmode" data-v="${k}" aria-pressed="${mode === k}">
+      <b>${title}</b><span>${sub}</span></button>`;
+  const swap = `
+      <div class="panel">
+        <h3 class="list-h">Обязательно</h3>
+        <ul class="check">
+          <li>Карточка машины в гараже</li>
+          <li>Экран КПП с передаточными числами</li>
+          <li>Таблица результатов заезда</li>
+        </ul>
+        <h3 class="list-h">Желательно</h3>
+        <ul class="check soft">
+          <li>Зажигание</li><li>Динамометр с маркерами</li><li>Подвеска</li>
+          <li>Давление шин и антикрыло</li><li>Турбо или шкив</li>
+        </ul>
+      </div>
+      <p class="hint" style="margin:14px 0">В сообщении напишите режим (402 м, 804 м, с тенью или бездорожье) и какую настройку хотите взамен. Скрины целиком, без обрезки: по версии в углу видно, с какого патча настройка.</p>
+      <a class="btn" id="send" data-type="swap" href="https://t.me/${SUBMIT_TG}" target="_blank" rel="noopener">Отправить скрины @${SUBMIT_TG}</a>
+      <p class="note">Если настройка рабочая, пришлём взамен любую другую из приложения. Ваш ник будет указан автором.</p>`;
+  const earn = `
+      <ol class="steps">
+        <li><span><b>Напишите @${SUBMIT_TG}</b> и пришлите 2–3 свои настройки со скринами заездов.</span></li>
+        <li><span><b>Мы проверяем время по скринам</b> и публикуем настройки с вашим ником.</span></li>
+        <li><span><b>С каждой продажи ваших настроек — 50%.</b> Отчёт о продажах и выплата на карту раз в неделю.</span></li>
+      </ol>
+      <p class="hint" style="margin:14px 0">Чем быстрее настройка, тем выше она в рейтинге и тем чаще её покупают. Свой канал и аудитория не нужны: покупателей приводим мы.</p>
+      <a class="btn" id="send" data-type="earn" href="https://t.me/${SUBMIT_TG}" target="_blank" rel="noopener">Стать автором — написать @${SUBMIT_TG}</a>`;
   return {
-    title: "Добавить заезд",
+    title: "Поделиться настройкой",
     html: `
-      <form id="add" novalidate>
-        <p class="hint">Перепишите цифры с экранов игры и приложите скриншоты: по ним модератор проверит заезд. За принятый заезд — 2 дня премиума.</p>
-        <fieldset><legend>Заезд</legend>
-          <div class="seg" role="radiogroup" aria-label="Режим">${Object.entries(MODES).map(([k, l]) =>
-            `<label><input type="radio" name="mode" value="${k}" ${d.mode === k ? "checked" : ""}><span>${l}</span></label>`).join("")}</div>
-          <div class="field"><label for="f-car">Машина, как в гараже</label>
-            <input id="f-car" list="car-list" placeholder="L-VFTS" autocomplete="off" value="${esc(d.car || "")}">
-            <datalist id="car-list">${CARS.map(c => `<option value="${esc(c.name)}">`).join("")}</datalist></div>
-        </fieldset>
-
-        <div class="panel"><fieldset><legend>Результат</legend>
-          <p class="hint">Колонка «Новый» в таблице результатов.</p>
-          <div class="grid2">
-            <div class="field"><label for="f-time">Время, с</label><input id="f-time" inputmode="decimal" placeholder="6.1072"></div>
-            <div class="field"><label for="f-speed">Скорость на финише</label><input id="f-speed" inputmode="numeric" placeholder="365"></div>
-            <div class="field"><label for="f-100">Разгон до 100, с</label><input id="f-100" inputmode="decimal" placeholder="1.1476"></div>
-            <div class="field"><label for="f-200">Разгон до 200, с</label><input id="f-200" inputmode="decimal" placeholder="2.1833"></div>
-          </div></fieldset></div>
-
-        <div class="panel"><fieldset><legend>Коробка передач</legend>
-          <div class="grid2">
-            <div class="field"><label for="f-fd">Главная пара</label><input id="f-fd" inputmode="decimal" placeholder="3.7"></div>
-            <div class="field"><label for="f-gears">Передач</label>
-              <select id="f-gears">${[3, 4, 5, 6, 7, 8].map(n => `<option ${n === d.gears ? "selected" : ""}>${n}</option>`).join("")}</select></div>
-          </div>
-          <div class="ratios" id="ratios"></div></fieldset></div>
-
-        <div class="panel"><fieldset><legend>Машина</legend>
-          <p class="hint">С карточки в гараже.</p>
-          <div class="grid3">
-            <div class="field"><label for="f-hpt">Л.с. на тонну</label><input id="f-hpt" inputmode="numeric" placeholder="3049"></div>
-            <div class="field"><label for="f-kg">Масса, кг</label><input id="f-kg" inputmode="numeric" placeholder="605"></div>
-            <div class="field"><label for="f-grip">Зацеп</label><input id="f-grip" inputmode="numeric" placeholder="379"></div>
-          </div></fieldset></div>
-
-        <details class="panel"><summary>Зажигание и обороты</summary><div>
-          <div class="grid2">
-            <div class="field"><label for="f-ign">Угол опережения</label><input id="f-ign" placeholder="3° 40'"></div>
-            <div class="field"><label for="f-rpm">Диапазон оборотов</label><input id="f-rpm" placeholder="2500–8900"></div>
-          </div>
-          <div class="grid3">
-            <div class="field"><label for="f-y">Жёлтый</label><input id="f-y" inputmode="numeric" placeholder="5694"></div>
-            <div class="field"><label for="f-g">Зелёный</label><input id="f-g" inputmode="numeric" placeholder="6100"></div>
-            <div class="field"><label for="f-r">Красный</label><input id="f-r" inputmode="numeric" placeholder="8420"></div>
-          </div></div></details>
-
-        <details class="panel"><summary>Подвеска, шины, крыло, наддув</summary><div>
-          <div class="grid2">
-            <div class="field"><label for="f-rs">Задние пружины</label><input id="f-rs" inputmode="decimal" placeholder="6.1"></div>
-            <div class="field"><label for="f-rst">Задние стойки</label><input id="f-rst" inputmode="decimal" placeholder="2.6"></div>
-            <div class="field"><label for="f-fs">Передние пружины</label><input id="f-fs" inputmode="decimal" placeholder="2.8"></div>
-            <div class="field"><label for="f-fst">Передние стойки</label><input id="f-fst" inputmode="decimal" placeholder="6"></div>
-            <div class="field"><label for="f-air">Пневмоподвеска</label><input id="f-air" inputmode="numeric" placeholder="-119"></div>
-            <div class="field"><label for="f-psi">Давление шин, PSI</label><input id="f-psi" inputmode="decimal" placeholder="0.95"></div>
-            <div class="field"><label for="f-wing">Антикрыло, °</label><input id="f-wing" inputmode="decimal" placeholder="5.00"></div>
-            <div class="field"><label for="f-boost">Пружина или шкив, %</label><input id="f-boost" inputmode="numeric" placeholder="100"></div>
-          </div></div></details>
-
-        <fieldset><legend>Скриншоты</legend>
-          <label class="upload" for="f-shots">
-            <input id="f-shots" type="file" accept="image/*" multiple>
-            <b id="shots-label">Выбрать скриншоты</b>
-            <span>Обязательно: карточка машины, КПП, результат</span>
-          </label>
-        </fieldset>
-        <p class="err" id="add-err" hidden></p>
-        <button class="btn" type="submit">Отправить на проверку</button>
-      </form>`,
+      <div class="choices" role="group" aria-label="Что вы хотите">
+        ${choice("swap", "Обменять", "Своя настройка в обмен на любую другую")}
+        ${choice("earn", "Зарабатывать", `50% с каждой продажи — около ${Math.round(PRICE_TUNE / 2)}&nbsp;₽`)}
+      </div>
+      ${mode === "swap" ? swap : earn}`,
   };
 }
 
@@ -620,69 +650,40 @@ function Done() {
 
 function Me() {
   const name = tgUser ? [tgUser.first_name, tgUser.last_name].filter(Boolean).join(" ") : "Игрок";
-  const st = { ok: ["ok", "принят"], wait: ["wait", "на проверке"], no: ["no", "отклонён"] };
   return {
     title: "Профиль",
     html: `
       <div class="me"><h2>${esc(name)}</h2>
-        <p>${state.premium ? "Премиум активен до 24.11.2026" : "Бесплатный доступ: топ-3 без цифр настройки"} · доверие 2</p></div>
+        <p>${state.premium ? "Полный доступ открыт" : `Бесплатно: время и характеристики. Цифры настройки — ${PRICE_TUNE} ₽ за машину`}</p></div>
       ${state.premium
-        ? `<button class="btn ghost" data-act="unbuy">Демо: выключить премиум</button>`
-        : `<div class="paywall" style="margin-top:0">
-            <p><b>Премиум — 150 ⭐ в месяц</b></p>
-            <p class="sub">Все настройки полностью, для всех машин и режимов. За каждый принятый заезд — 2 дня бесплатно.</p>
-            <button class="btn" data-act="buy">Оформить за 150 ⭐</button></div>`}
-      <div class="section-title">Мои заявки</div>
-      <div class="subs">${MY_SUBS.map(s => `<div class="sub-row">
-        <span>${esc(s.car)} · ${MODES[s.mode]} · ${sec(s.time)} с</span>
-        <span class="pill ${st[s.status][0]}">${st[s.status][1]}</span>
-        <span class="s">${s.when}${s.why ? " · " + esc(s.why) : ""}</span></div>`).join("")}</div>
-      <p class="note">Оплата проходит звёздами Telegram. В демо кнопка просто включает премиум, чтобы посмотреть закрытые экраны.</p>`,
+        ? `<p class="note" style="margin-top:0">Доступ открыт кодом. При продлении пришлём новый.</p>`
+        : paywall() + `<details class="panel" style="margin-top:12px"><summary>Есть код доступа</summary><div>
+            <form class="cmp" id="code-form" novalidate style="margin-top:0">
+              <input id="code" placeholder="Код доступа" aria-label="Код доступа" autocomplete="off" autocapitalize="characters" spellcheck="false">
+              <button class="btn ghost" type="submit">Открыть</button>
+            </form>
+            <p class="cmp-out err" id="code-err" role="status" hidden>Код не подошёл. Проверьте написание или напишите @${SUBMIT_TG}.</p>
+          </div></details>`}
+      <div class="section-title">Мои настройки</div>
+      <p class="empty" style="padding-top:0">Здесь появятся настройки, которые вы прислали. Пока заезды принимаются в чате @${SUBMIT_TG}.</p>
+      <button class="btn ghost" data-tab="add">Прислать свою настройку</button>`,
   };
-}
-
-/* ===== Форма добавления ===== */
-function drawRatios(n) {
-  const box = $("#ratios"); if (!box) return;
-  const old = [...box.querySelectorAll("input")].map(i => i.value);
-  box.innerHTML = Array.from({ length: n }, (_, i) =>
-    `<div class="field"><label for="f-r${i + 1}">${i + 1} передача</label><input id="f-r${i + 1}" inputmode="decimal" value="${esc(old[i] || "")}"></div>`).join("");
-}
-function bindAdd() {
-  drawRatios(state.draft.gears);
-  $("#f-gears").addEventListener("change", e => { state.draft.gears = +e.target.value; drawRatios(state.draft.gears); });
-  $("#f-shots").addEventListener("change", e => {
-    const n = e.target.files.length;
-    $("#shots-label").textContent = n ? `Выбрано: ${n} ${plural(n, "скриншот", "скриншота", "скриншотов")}` : "Выбрать скриншоты";
-  });
-  $("#add").addEventListener("submit", e => {
-    e.preventDefault();
-    const f = e.target;
-    const val = id => ($("#" + id).value || "").replace(",", ".").trim();
-    const need = ["f-car", "f-time", "f-fd", "f-hpt", ...Array.from({ length: state.draft.gears }, (_, i) => `f-r${i + 1}`)];
-    let bad = need.filter(id => !val(id) || (id !== "f-car" && isNaN(+val(id))));
-    f.querySelectorAll("[aria-invalid]").forEach(i => i.removeAttribute("aria-invalid"));
-    bad.forEach(id => $("#" + id).setAttribute("aria-invalid", "true"));
-    const err = $("#add-err");
-    const msgs = [];
-    if (bad.length) msgs.push("Заполните отмеченные поля: машина, время, главная пара, все передачи, л.с. на тонну.");
-    if (!$("#f-shots").files.length) msgs.push("Приложите скриншоты: без них заезд не проверить.");
-    const a100 = +val("f-100"), a200 = +val("f-200"), time = +val("f-time");
-    if (a100 && a200 && time && !(a100 < a200 && a200 < time)) msgs.push("Разгон до 100, до 200 и общее время должны идти по возрастанию — проверьте цифры.");
-    if (msgs.length) { err.textContent = msgs.join(" "); err.hidden = false; haptic("medium"); (bad[0] ? $("#" + bad[0]) : err).focus(); return; }
-    err.hidden = true;
-    track("add_submit", { car: val("f-car") });
-    state.draft = null;
-    try { tg && tg.HapticFeedback.notificationOccurred("success"); } catch {}
-    state.stack = [{ view: "add" }, { view: "done" }];
-    render(true);
-  });
-  document.querySelectorAll('input[name="mode"]').forEach(r => r.addEventListener("change", e => (state.draft.mode = e.target.value)));
-  $("#f-car").addEventListener("input", e => (state.draft.car = e.target.value));
 }
 
 /* ===== События ===== */
 document.addEventListener("click", e => {
+  const buy = e.target.closest("#buy");
+  if (buy) {
+    track("buy_click", { tune: buy.dataset.what || "profile" });
+    if (tg) { e.preventDefault(); tg.openTelegramLink(buy.href); }
+    return;
+  }
+  const send = e.target.closest("#send");
+  if (send) {
+    track("send_click", { type: send.dataset.type });
+    if (tg) { e.preventDefault(); tg.openTelegramLink(send.href); }
+    return;
+  }
   const el = e.target.closest("[data-car],[data-tune],[data-mode],[data-tab],[data-fav],[data-act]");
   if (!el) return;
   const d = el.dataset;
@@ -698,8 +699,51 @@ document.addEventListener("click", e => {
     return render(false);
   }
   if (d.act === "back") return back();
-  if (d.act === "buy") { track("buy_click"); state.premium = true; store.set("premium", true); toast("Оплата скоро. Пока открыли бесплатно"); return render(false); }
-  if (d.act === "unbuy") { state.premium = false; store.set("premium", false); toast("Демо: премиум выключен"); return render(false); }
+  if (d.act === "addmode") { state.addMode = d.v; haptic(); return render(false); }
+  if (d.act === "share-tune") {
+    const t = TUNES.find(x => x.id === +d.id), c = carById(t.car);
+    return share(`tune_${t.id}`, `${c.name}, ${MODES[t.mode]} — ${sec(t.time)} с. Проверенная настройка:`);
+  }
+  if (d.act === "share-car") {
+    const c = carById(+d.id);
+    return share(`car_${c.id}_${state.mode}`, `Лучшие настройки для ${c.name}, ${MODES[state.mode]}:`);
+  }
+});
+document.addEventListener("submit", e => {
+  if (e.target.id !== "code-form") return;
+  e.preventDefault();
+  const code = normCode($("#code").value);
+  if (h32(code) === ACCESS_HASH) {
+    store.set("code", code); state.premium = true;
+    track("code_ok");
+    try { tg && tg.HapticFeedback.notificationOccurred("success"); } catch {}
+    toast("Полный доступ открыт");
+    return render(false);
+  }
+  track("code_fail");
+  $("#code").setAttribute("aria-invalid", "true");
+  $("#code-err").hidden = false;
+  haptic("medium");
+});
+document.addEventListener("submit", e => {
+  if (e.target.id !== "cmp") return;
+  e.preventDefault();
+  const out = $("#cmp-out");
+  const v = parseFloat(($("#my-time").value || "").replace(",", "."));
+  const best = tunesFor(current().id, state.mode)[0];
+  out.hidden = false;
+  if (!v || v < 1 || v > 60) {
+    out.className = "cmp-out err";
+    out.textContent = "Введите время из таблицы результатов, например 6.2150";
+    return;
+  }
+  track("compare", { gap: +(v - best.time).toFixed(4) });
+  const diff = v - best.time;
+  out.className = "cmp-out";
+  out.innerHTML = diff > 0
+    ? `Медленнее лучшего на <b>${diff.toFixed(3)} с</b> (${(diff / best.time * 100).toFixed(1).replace(".", ",")}%). Откройте настройку №1 и сравните со своей.`
+    : `<b>Это быстрее лучшего в базе.</b> Пришлите заезд — станете №1.<br><button class="btn" style="margin-top:10px" data-tab="add" type="button">Прислать заезд</button>`;
+  haptic();
 });
 document.addEventListener("input", e => {
   if (e.target.id !== "q") return;
@@ -713,6 +757,7 @@ document.addEventListener("input", e => {
   const q = $("#q"); q.focus(); q.setSelectionRange(pos, pos);
 });
 
+openStartParam();
 render(true);
 </script>
 
